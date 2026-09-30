@@ -1,0 +1,145 @@
+name: Nexvion Website Build
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and Validate Website
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # 1. Checkout source code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Check required files
+      - name: Validate project files
+        run: |
+          echo "Checking required files..."
+
+          required_files=(
+            "index.html"
+            "products.html"
+            "payment.html"
+            "style.css"
+            "products.css"
+            "payment.css"
+            "script.js"
+            "payment.js"
+            "logo.png"
+          )
+
+          for file in "${required_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "ERROR: Missing file: $file"
+              exit 1
+            fi
+            echo "OK: $file"
+          done
+
+          echo "All required files are present."
+
+      # 3. Basic HTML validation
+      - name: Validate HTML files
+        run: |
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          import sys
+
+          class Parser(HTMLParser):
+              pass
+
+          files = [
+              "index.html",
+              "products.html",
+              "payment.html"
+          ]
+
+          for file in files:
+              print(f"Validating {file}")
+              parser = Parser()
+
+              try:
+                  with open(file, "r", encoding="utf-8") as f:
+                      parser.feed(f.read())
+
+                  parser.close()
+                  print(f"OK: {file}")
+              except Exception as e:
+                  print(f"ERROR: {file}: {e}")
+                  sys.exit(1)
+
+          print("HTML validation completed successfully.")
+          PY
+
+      # 4. Build static website
+      - name: Prepare build
+        run: |
+          rm -rf build
+          mkdir -p build
+
+          cp index.html build/
+          cp products.html build/
+          cp payment.html build/
+
+          cp style.css build/
+          cp products.css build/
+          cp payment.css build/
+
+          cp script.js build/
+          cp payment.js build/
+
+          cp logo.png build/
+
+          echo "Build completed."
+          find build -type f
+
+      # 5. Run website locally
+      - name: Start web server
+        run: |
+          cd build
+          python3 -m http.server 8080 > /tmp/server.log 2>&1 &
+          echo $! > /tmp/server.pid
+
+          sleep 3
+
+      # 6. Smoke test application
+      - name: Smoke test website
+        run: |
+          echo "Testing index page..."
+          curl --fail http://localhost:8080/index.html
+
+          echo "Testing products page..."
+          curl --fail http://localhost:8080/products.html
+
+          echo "Testing payment page..."
+          curl --fail http://localhost:8080/payment.html
+
+          echo "All pages are accessible."
+
+      # 7. Stop web server
+      - name: Stop web server
+        if: always()
+        run: |
+          if [ -f /tmp/server.pid ]; then
+            kill $(cat /tmp/server.pid) || true
+          fi
+
+      # 8. Upload website artifact
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexvion-website
+          path: build/
+          retention-days: 7
