@@ -82,6 +82,33 @@ jobs:
 
           print("HTML validation completed successfully.")
           PY
+          
+            - name: Build Docker image
+        run: |
+          docker build -t nexvion:latest .
+
+      - name: Check Docker image
+        run: |
+          docker images nexvion
+
+      - name: Run Docker container
+        run: |
+          docker run -d \
+            --name nexvion \
+            -p 8080:80 \
+            nexvion:latest
+
+      - name: Test Nexvion Docker container
+        run: |
+          sleep 5
+          curl --fail http://localhost:8080/
+          echo "Nexvion Docker container is working successfully!"
+
+      - name: Stop Docker container
+        if: always()
+        run: |
+          docker stop nexvion || true
+          docker rm nexvion || true    
 
       # 4. Build static website
       - name: Prepare build
