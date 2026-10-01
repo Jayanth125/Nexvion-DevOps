@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
   build:
@@ -87,42 +88,25 @@ jobs:
         run: |
           docker build -t nexvion:latest .
           
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+            - name: Login to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
+            -u "${{ github.actor }}" \
+            --password-stdin
 
       - name: Tag Docker image
         run: |
-          docker tag nexvion:latest jayanth2026nov/nexvion:latest
+          docker tag nexvion:latest \
+            ghcr.io/${{ github.repository_owner }}/nexvion:latest
 
-      - name: Push Docker image to Docker Hub
+      - name: Push Docker image to GitHub Container Registry
         run: |
-          docker push jayanth2026nov/nexvion:latest
+          docker push \
+            ghcr.io/${{ github.repository_owner }}/nexvion:latest
           
       - name: Check Docker image
         run: |
           docker images nexvion
-
-      - name: Run Docker container
-        run: |
-          docker run -d \
-            --name nexvion \
-            -p 8080:80 \
-            nexvion:latest
-
-      - name: Test Nexvion Docker container
-        run: |
-          sleep 5
-          curl --fail http://localhost:8080/
-          echo "Nexvion Docker container is working successfully!"
-
-      - name: Stop Docker container
-        if: always()
-        run: |
-          docker stop nexvion || true
-          docker rm nexvion || true
 
       # 4. Build static website
       - name: Prepare build
