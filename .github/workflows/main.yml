@@ -84,13 +84,13 @@ jobs:
           print("HTML validation completed successfully.")
           PY
 
-      - name: Build Docker image
-        run: |
-          docker build -t nexvion:latest .
+            - name: Build Docker image
+              run: |
+                docker build -t nexvion:latest .
 
-            - name: Configure AWS credentials
-             uses: aws-actions/configure-aws-credentials@v6
-             with:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ap-south-1
 
@@ -112,7 +112,7 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker push \
-            $REGISTRY/nexvion-frontend:$IMAGE_TAG
+            $REGISTRY/nexvion-frontend:$IMAGE_TAG      
             
       # 4. Build static website
       - name: Prepare build
