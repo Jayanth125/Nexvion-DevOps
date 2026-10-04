@@ -10,8 +10,8 @@ on:
       - main
 
 permissions:
-  contents: read
-  packages: write
+ id-token: write
+ contents: read
 
 jobs:
   build:
@@ -88,57 +88,31 @@ jobs:
         run: |
           docker build -t nexvion:latest .
 
-      - name: Login to GitHub Container Registry
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
-            -u "${{ github.actor }}" \
-            --password-stdin
+            - name: Configure AWS credentials
+             uses: aws-actions/configure-aws-credentials@v6
+             with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ap-south-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Tag Docker image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
           docker tag nexvion:latest \
-            ghcr.io/jayanth125/nexvion:latest
+            $REGISTRY/nexvion-frontend:$IMAGE_TAG
 
-      - name: Push Docker image to GitHub Container Registry
+      - name: Push Docker image to Amazon ECR
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
           docker push \
-            ghcr.io/jayanth125/nexvion:latest
-
-      - name: Deploy to AWS EC2
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: appleboy/ssh-action@v1.2.2
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          script: |
-            docker pull ghcr.io/jayanth125/nexvion:latest
-
-            docker rm -f nexvion || true
-
-            docker run -d \
-              --name nexvion \
-              --restart unless-stopped \
-              -p 80:80 \
-              ghcr.io/jayanth125/nexvion:latest
-
-            docker image prune -f
-
-            # Wait for Nginx to become ready
-            for i in {1..30}; do
-            if curl -fsS http://localhost > /dev/null; then
-             echo "Nexvion is running successfully!"
-             exit 0
-            fi
-
-            echo "Waiting for Nexvion..."
-            sleep 2
-            done
-
-            echo "Nexvion failed to start"
-            docker logs nexvion
-            exit 1
+            $REGISTRY/nexvion-frontend:$IMAGE_TAG
             
       # 4. Build static website
       - name: Prepare build
