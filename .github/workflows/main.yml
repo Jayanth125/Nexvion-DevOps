@@ -104,6 +104,29 @@ jobs:
           docker push \
             ghcr.io/jayanth125/nexvion:latest
 
+      - name: Deploy to AWS EC2
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            docker pull ghcr.io/jayanth125/nexvion:latest
+
+            docker rm -f nexvion || true
+
+            docker run -d \
+              --name nexvion \
+              --restart unless-stopped \
+              -p 80:80 \
+              ghcr.io/jayanth125/nexvion:latest
+
+            docker image prune -f
+
+            curl --fail http://localhost
+            
       # 4. Build static website
       - name: Prepare build
         run: |
