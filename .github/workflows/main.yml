@@ -125,7 +125,20 @@ jobs:
 
             docker image prune -f
 
-            curl --fail http://localhost
+            # Wait for Nginx to become ready
+            for i in {1..30}; do
+            if curl -fsS http://localhost > /dev/null; then
+             echo "Nexvion is running successfully!"
+             exit 0
+            fi
+
+            echo "Waiting for Nexvion..."
+            sleep 2
+            done
+
+            echo "Nexvion failed to start"
+            docker logs nexvion
+            exit 1
             
       # 4. Build static website
       - name: Prepare build
