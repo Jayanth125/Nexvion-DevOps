@@ -19,11 +19,11 @@ jobs:
     name: Build and Validate Website
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+     - name: Checkout repository
+       uses: actions/checkout@v4
 
-      - name: Validate project files
-        run: |
+     - name: Validate project files
+       run: |
           echo "Checking required files..."
 
           required_files=(
@@ -48,8 +48,8 @@ jobs:
           echo "All required files found."
           
       # 3. Basic HTML validation
-      - name: Validate HTML files
-        run: |
+     - name: Validate HTML files
+       run: |
           python3 - <<'PY'
           from html.parser import HTMLParser
           import sys
@@ -80,39 +80,39 @@ jobs:
           print("HTML validation completed successfully.")
           PY
 
-      - name: Build Docker image
-       run:|
+     - name: Build Docker image
+       run: |
         docker build -t nexvion:latest .
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
+     - name: Configure AWS credentials
+       uses: aws-actions/configure-aws-credentials@v6
+       with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ap-south-1
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+     - name: Login to Amazon ECR
+       id: login-ecr
+       uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Tag Docker image
-        env:
+     - name: Tag Docker image
+       env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
-        run: |
+       run: |
           docker tag nexvion:latest \
             $REGISTRY/nexvion-frontend:$IMAGE_TAG
 
-      - name: Push Docker image to Amazon ECR
-        env:
+     - name: Push Docker image to Amazon ECR
+       env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
-        run: |
+       run: |
           docker push \
             $REGISTRY/nexvion-frontend:$IMAGE_TAG      
             
       # 4. Build static website
-      - name: Prepare build
-        run: |
+     - name: Prepare build
+       run: |
           rm -rf build
           mkdir -p build
 
@@ -133,8 +133,8 @@ jobs:
           find build -type f
 
       # 5. Run website locally
-      - name: Start web server
-        run: |
+     - name: Start web server
+       run: |
           cd build
           python3 -m http.server 8080 > /tmp/server.log 2>&1 &
           echo $! > /tmp/server.pid
@@ -142,8 +142,8 @@ jobs:
           sleep 3
 
       # 6. Smoke test application
-      - name: Smoke test website
-        run: |
+     - name: Smoke test website
+       run: |
           echo "Testing index page..."
           curl --fail http://localhost:8080/index.html
 
@@ -156,17 +156,17 @@ jobs:
           echo "All pages are accessible."
 
       # 7. Stop web server
-      - name: Stop web server
-        if: always()
-        run: |
+     - name: Stop web server
+       if: always()
+       run: |
           if [ -f /tmp/server.pid ]; then
             kill $(cat /tmp/server.pid) || true
           fi
 
       # 8. Upload website artifact
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: nexvion-website
-          path: build/
-          retention-days: 7
+     - name: Upload build artifact
+       uses: actions/upload-artifact@v4
+       with:
+           name: nexvion-website
+           path: build/
+           retention-days: 7
